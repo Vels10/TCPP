@@ -1,0 +1,152 @@
+SERVER
+
+import socket,pickle
+def printInfo(obj):
+    print('\n')
+    print('Information about the packet at Server Side')
+    print(obj.sqN, obj.acN, obj.syn, obj.ack)
+    print('\n')
+    if obj.syn == True:
+        print('STATE : SYN RCVD')
+    elif obj.ack == True:
+        print('STATE : ESTABLISHED')
+
+class Packet:
+    sqN = 0
+    acN = 0 
+    syn = False
+    ack = False
+    fin = False
+    psh = False
+    rst = False
+    urg = False
+    
+    def __init__ (self,sqN,acN,syn,ack,fin,psh,rst,urg):
+        self.sqN= sqN
+        self.acN = acN
+        self.syn = syn
+        self.ack = ack
+        self.fin = fin
+        self.psh = psh
+        self.rst = rst
+        self.urg = urg
+        
+    def sendPckt(self):
+        #SYN RECEIVED SO WE SEND SYNACK IN RETURN
+        if self.syn== True and self.ack == False:
+            self.acN = self.sqN + 1
+            self.sqN = 56789
+            self.syn = True
+            self.ack = True
+            return self
+        
+#SOCKET
+HOST = 'localhost'
+PORT = 8011
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind((HOST, PORT))
+s.listen(1)
+conn, addr = s.accept()
+print('Connected by', addr)
+print('\n')
+print('STATE : LISTEN')
+
+data = conn.recv(4096)
+#RECV SYN
+data_syn = pickle.loads(data)
+print('\nRECEIVED SYN PACKET FROM CLIENT')
+printInfo(data_syn)
+#GEN SYNACK
+printInfo(data_syn.sendPckt())
+data_synack = pickle.dumps(data_syn)
+#SEND SYNACK
+print('\nSENDING SYNACK PACKET TO CLIENT')
+conn.send(data_synack)
+# Access the information by doing data_variable.process_id or data_variable.task_id etc..,
+dataack = conn.recv(4096)
+data_ack = pickle.loads(dataack)
+print('\nRECEIVED ACK PACKET FROM CLIENT')
+printInfo(data_ack)
+s.close()
+
+
+
+
+
+
+
+
+
+
+
+CLIENT
+
+
+
+
+import socket,pickle
+
+def printInfo(obj):
+    print('\n')
+    print('Information about the packet at Client Side')
+    print(obj.sqN, obj.acN, obj.syn, obj.ack)
+    print('\n')
+    if obj.syn == True and obj.ack == False:
+        print('STATE : SYN SENT')
+    if obj.syn == True and obj.ack == True:
+        print('STATE : ESTABLISHED')
+
+class Packet:
+    sqN = 12345
+    acN = 0 
+    syn = False
+    ack = False
+    fin = False
+    psh = False
+    rst = False
+    urg = False
+    
+    def __init__ (self,sqN,acN,syn,ack,fin,psh,rst,urg):
+        self.sqN= sqN
+        self.acN = acN
+        self.syn = syn
+        self.ack = ack
+        self.fin = fin
+        self.psh = psh
+        self.rst = rst
+        self.urg = urg
+        
+    def sendPckt(self):
+        #SYNACK RECEIVED SO WE SEND ACK IN RETURN
+        if self.syn== True and self.ack == True:
+            #It is a SYNACK Pakcet received
+            nextack = self.sqN + 1
+            self.sqN = self.acN
+            self.acN = nextack
+            self.syn = False
+            self.ack = True
+            return self
+        
+HOST = 'localhost'
+PORT = 8011
+# Create a socket connection.
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((HOST, PORT))
+# Create an instance of ProcessData() to send to server.
+tcp = Packet(12344,0,True,False,False,False,False,False)
+# Pickle the object and send it to the server
+printInfo(tcp)
+data_syn = pickle.dumps(tcp)
+#SEND SYN
+print('\nSENDING SYN PACKET TO SERVER')
+s.send(data_syn)
+data = s.recv(4096)
+#RECV SYNACK
+print('\nRECEIVED SYNACK PACKET FROM SERVER')
+data_synack = pickle.loads(data)
+printInfo(data_synack)
+dataack = data_synack.sendPckt()
+data_ack = pickle.dumps(dataack)
+print('\nSENDING ACK PACKET TO SERVER')
+s.send(data_ack)
+s.close()
